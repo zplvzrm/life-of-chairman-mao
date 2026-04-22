@@ -1,0 +1,4 @@
+verbose: false
+debug: false
+loglevel: warning
+logpath: /tmp/life_of_chairman_mao
