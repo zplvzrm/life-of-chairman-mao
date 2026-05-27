@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教员的一生 · 年份详情</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Cinzel:wght@400;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:100vw;height:100vh;overflow:hidden;background:#000;font-family:'Noto Serif SC',serif;display:flex;flex-direction:column;}
+
+/* ── Hero ── */
+#detail-hero{position:relative;flex:1;min-height:0;overflow:hidden;}
+#detail-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;filter:brightness(0.42);transition:filter 0.5s;}
+#detail-hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.08) 35%,rgba(0,0,0,0.6) 78%,rgba(0,0,0,0.93) 100%);}
+
+/* ── Back button ── */
+#detail-back{
+  position:absolute;top:28px;left:32px;z-index:10;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  background:rgba(0,0,0,0.35);border:1px solid rgba(255,220,100,0.3);
+  border-radius:999px;padding:8px 20px 8px 14px;
+  backdrop-filter:blur(8px);
+  text-decoration:none;
+  transition:background 0.2s,border-color 0.2s;
+}
+#detail-back:hover{background:rgba(0,0,0,0.55);border-color:rgba(255,220,100,0.6);}
+#detail-back svg{width:16px;height:16px;fill:none;stroke:#e8d5a3;stroke-width:2;stroke-linecap:round;}
+#detail-back span{font-family:'Cinzel',serif;font-size:11px;color:#e8d5a3;letter-spacing:.2em;}
+
+/* ── Year badge ── */
+#detail-year-badge{position:absolute;top:24px;right:36px;z-index:10;text-align:right;}
+#detail-year-badge .yr{font-family:'Cinzel',serif;font-size:clamp(32px,5vw,58px);color:#ffd87a;text-shadow:0 0 40px rgba(255,200,80,0.7);letter-spacing:.1em;line-height:1;}
+#detail-year-badge .age-tag{font-size:13px;color:rgba(220,190,120,0.75);letter-spacing:.2em;margin-top:4px;text-align:center;}
+#detail-portrait-wrap{display:inline-flex;flex-direction:column;align-items:center;margin-top:10px;}
+#detail-portrait{width:clamp(80px,5vw,116px);}
+
+/* ── Content card ── */
+#detail-content-card{
+  position:absolute;bottom:0;left:80px;right:80px;
+  max-height:calc(100% - 100px);overflow:hidden;
+  padding:28px 52px 28px 32px;z-index:5;
+  transition:opacity 0.3s ease,transform 0.3s ease,padding-left 0.35s cubic-bezier(.4,0,.2,1);
+}
+#detail-text-inner{will-change:transform;padding-bottom:25vh;}
+#detail-day-panel.open ~ #detail-content-card,
+body.day-panel-open #detail-content-card{padding-left:100px;}
+
+#detail-event-date{font-family:'Cinzel',serif;font-size:12px;color:rgba(255,220,100,0.65);letter-spacing:.28em;margin-bottom:14px;}
+#detail-event-text{font-size:clamp(15px,2vw,21px);color:#f0e8d0;line-height:2.1;letter-spacing:.14em;text-shadow:0 1px 10px rgba(0,0,0,0.9);}
+#detail-event-annotation{margin-top:10px;font-size:12px;color:rgba(200,180,130,0.5);letter-spacing:.15em;font-style:italic;}
+#detail-event-source{margin-top:8px;font-size:12px;color:rgba(200,180,130,0.45);letter-spacing:.12em;font-style:italic;text-align:right;}
+.event-block{margin-bottom:18px;}
+.event-block:last-child{margin-bottom:0;}
+
+/* ── Month strip ── */
+#detail-month-strip-wrap{background:rgba(0,0,0,0.9);border-top:1px solid rgba(255,220,100,0.1);flex-shrink:0;}
+#detail-month-strip{
+  display:flex;align-items:flex-end;justify-content:center;
+  overflow:hidden;height:76px;padding:0 8px;
+  position:relative;
+}
+.month-tab{
+  flex:1;max-width:80px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  padding:0 4px 12px;cursor:pointer;
+  border-bottom:2px solid transparent;height:76px;
+  transition:all 0.32s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+.month-tab .m-num{font-family:'Cinzel',serif;font-size:10px;color:rgba(200,175,110,0.35);letter-spacing:.1em;line-height:1;transition:all 0.32s;}
+.month-tab .m-zh{font-size:12px;color:rgba(200,175,110,0.35);margin-top:3px;transition:all 0.32s;letter-spacing:.03em;white-space:nowrap;}
+.month-tab .m-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,200,80,0.15);margin-top:5px;transition:all 0.32s;}
+.month-tab.has-data .m-num,.month-tab.has-data .m-zh{color:rgba(220,190,120,0.72);}
+.month-tab.has-data .m-dot{background:rgba(255,200,80,0.7);}
+.month-tab.active{border-bottom-color:#ffd87a;}
+.month-tab.active .m-num{font-size:11px;color:#ffd87a;}
+.month-tab.active .m-zh{font-size:20px;color:#ffd87a;text-shadow:0 0 18px rgba(255,200,80,0.6);font-weight:600;}
+.month-tab.active .m-dot{background:#ffd87a;width:5px;height:5px;box-shadow:0 0 6px rgba(255,200,80,0.8);}
+
+/* ── Day drum panel ── */
+#detail-day-panel{
+  position:absolute;left:0;top:0;bottom:76px;width:82px;
+  background:rgba(0,0,0,0.8);
+  border-right:1px solid rgba(255,220,100,0.12);
+  backdrop-filter:blur(10px);
+  z-index:8;
+  transform:translateX(-100%);
+  transition:transform 0.35s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 18%,#000 82%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,#000 18%,#000 82%,transparent 100%);
+  cursor:ns-resize;
+  user-select:none;
+}
+#detail-day-panel::-webkit-scrollbar{display:none;}
+#detail-day-panel.open{transform:translateX(0);}
+#day-drum{
+  display:flex;flex-direction:column;align-items:center;
+  padding:0;gap:0;
+  will-change:transform;
+  transition:transform 0.18s cubic-bezier(.25,.8,.25,1);
+}
+#day-drum.dragging{transition:none;}
+.day-item{
+  width:82px;height:52px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;
+  border-bottom:1px solid rgba(255,220,100,0.06);
+  transition:background 0.15s;
+  flex-shrink:0;
+}
+.day-item .d-label{font-family:'Noto Serif SC',serif;font-size:15px;color:rgba(200,175,110,0.5);transition:all 0.22s;letter-spacing:.05em;}
+.day-item:hover .d-label{color:rgba(220,195,130,0.85);}
+.day-item.active .d-label{color:#ffd87a;font-size:19px;font-weight:600;text-shadow:0 0 14px rgba(255,200,80,0.75);}
+
+/* ── Loading ── */
+#loading{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:#000;z-index:999;
+  font-family:'Cinzel',serif;font-size:14px;color:rgba(200,175,110,0.6);
+  letter-spacing:.3em;
+}
+</style>
+</head>
+<body>
+
+<div id="loading">LOADING…</div>
+
+<div id="detail-hero">
+  <img id="detail-bg-img" src="images/红日初升.jpg" alt="">
+  <div id="detail-hero-overlay"></div>
+
+  <a id="detail-back" href="home.html">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    <span>返回星空</span>
+  </a>
+
+  <div id="detail-year-badge">
+    <div class="yr" id="detail-yr-num"></div>
+    <div id="detail-portrait-wrap">
+      <img id="detail-portrait" src="" alt="" style="display:none;">
+      <div class="age-tag" id="detail-age-tag"></div>
+    </div>
+  </div>
+
+  <div id="detail-content-card">
+    <div id="detail-text-inner">
+    <div id="detail-event-date"></div>
+    <div id="detail-event-text"></div>
+    <div id="detail-event-annotation"></div>
+    <div id="detail-event-source"></div>
+    </div>
+  </div>
+</div>
+
+<div id="detail-day-panel"></div>
+
+<div id="detail-month-strip-wrap">
+  <div id="detail-month-strip"></div>
+</div>
+
+<script>
+const API_BASE = 'http://127.0.0.1:8000/api';
+
+// === INIT ===
+const params = new URLSearchParams(location.search);
+const year   = params.get('year') || String(new Date().getFullYear());
+const age    = Number(year) - 1893;
+
+document.getElementById('detail-yr-num').textContent  = year;
+document.getElementById('detail-age-tag').textContent = age + ' 岁';
+(function(){
+  const img = document.getElementById('detail-portrait');
+  img.src = `images/jiaoyuan/${year}.png`;
+  img.onload  = () => { img.style.display = 'block'; };
+  img.onerror = () => { img.style.display = 'none'; };
+})();
+document.title = `教员的一生 · ${year}`;
+
+// === DRUM SCROLL STATE ===
+// drumEvents: array of { day, month, events[] } — one entry per unique day in current month
+let drumEvents    = [];
+let drumOffset    = 0;
+let drumDragStart = null;
+let activeIdx     = 0;   // currently selected day index within drumEvents
+const ITEM_H      = 52;
+let detailMonth   = null;
+
+// === TEXT SCROLL STATE ===
+let textScrollOffset = 0;
+const SCROLL_STEP    = 160;
+
+function getTextScrollMax() {
+  const inner = document.getElementById('detail-text-inner');
+  const card  = document.getElementById('detail-content-card');
+  if (!inner || !card) return 0;
+  return Math.max(0, inner.scrollHeight - card.clientHeight);
+}
+function scrollText(offset, animated = true) {
+  textScrollOffset = offset;
+  const inner = document.getElementById('detail-text-inner');
+  if (!inner) return;
+  inner.style.transition = animated ? 'transform 0.35s cubic-bezier(.4,0,.2,1)' : 'none';
+  inner.style.transform  = `translateY(${-offset}px)`;
+}
+function resetTextScroll() {
+  textScrollOffset = 0;
+  boundaryAccY = 0;
+  const inner = document.getElementById('detail-text-inner');
+  if (!inner) return;
+  inner.style.transition = 'none';
+  inner.style.transform  = 'translateY(0)';
+}
+
+// === FLAT DATE LIST (all months, all days in order) ===
+// flatDates: array of { day, month, events[] } across the whole year
+let flatDates = [];
+let flatIdx   = 0;   // current position in flatDates
+
+function buildFlatDates() {
+  flatDates = [];
+  const monthOrder = [...new Set((window.yearEvents || []).map(e => e.month))];
+  monthOrder.forEach(m => {
+    const rawEvents = (window.yearEvents || [])
+      .filter(e => e.month === m)
+      .sort((a, b) => Number(a.day) - Number(b.day));
+    const dayMap = new Map();
+    rawEvents.forEach(ev => {
+      if (!dayMap.has(ev.day)) dayMap.set(ev.day, { day: ev.day, month: m, events: [] });
+      dayMap.get(ev.day).events.push(ev);
+    });
+    flatDates.push(...dayMap.values());
+  });
+}
+
+// Navigate forward/backward by delta steps in flatDates
+function navigateFlat(delta) {
+  const newIdx = flatIdx + delta;
+  if (newIdx < 0) {
+    // Before first date of year → go to previous year's last date
+    const prevYear = Number(year) - 1;
+    if (prevYear >= 1893) window.location.href = `detail.html?year=${prevYear}&gotoLast=1`;
+    return;
+  }
+  if (newIdx >= flatDates.length) {
+    // After last date of year → go to next year's first date
+    const nextYear = Number(year) + 1;
+    if (nextYear <= 1976) window.location.href = `detail.html?year=${nextYear}`;
+    return;
+  }
+  const target = flatDates[newIdx];
+  if (target.month !== detailMonth) {
+    selectMonth(target.month, target.day);
+  } else {
+    const drumIdx = drumEvents.findIndex(g => g.day === target.day);
+    if (drumIdx >= 0) {
+      snapTo(drumIdx, true);
+      selectDayGroup(drumEvents[drumIdx]);
+    }
+  }
+}
+
+// Navigate to next/previous month's first date with data
+function navigateMonth(delta) {
+  const monthOrder = [...new Set((window.yearEvents || []).map(e => e.month))];
+  const curMonthIdx = monthOrder.indexOf(detailMonth);
+  if (curMonthIdx < 0) return;
+  const newMonthIdx = curMonthIdx + delta;
+  if (newMonthIdx < 0) {
+    // Before first month of year → go to previous year's last date
+    const prevYear = Number(year) - 1;
+    if (prevYear >= 1893) window.location.href = `detail.html?year=${prevYear}&gotoLast=1`;
+    return;
+  }
+  if (newMonthIdx >= monthOrder.length) {
+    // After last month of year → go to next year's first date
+    const nextYear = Number(year) + 1;
+    if (nextYear <= 1976) window.location.href = `detail.html?year=${nextYear}`;
+    return;
+  }
+  selectMonth(monthOrder[newMonthIdx]);
+}
+
+// === DRUM SCROLL ===
+function drumClamp(offset) {
+  const max = 0;
+  const min = -(Math.max(0, drumEvents.length - 1)) * ITEM_H;
+  return Math.max(min, Math.min(max, offset));
+}
+function snapTo(idx, animated) {
+  activeIdx  = idx;
+  drumOffset = drumClamp(-(idx * ITEM_H));
+  applyDrumOffset(animated);
+  setDrumHighlight(idx);
+}
+function applyDrumOffset(animated) {
+  const drum = document.getElementById('day-drum');
+  if (!drum) return;
+  if (!animated) drum.classList.add('dragging');
+  else           drum.classList.remove('dragging');
+  drum.style.transform = `translateY(${drumOffset}px)`;
+}
+function setDrumHighlight(idx) {
+  const drum = document.getElementById('day-drum');
+  if (!drum) return;
+  drum.querySelectorAll('.day-item').forEach((item, i) => {
+    item.classList.toggle('active', i === idx);
+  });
+}
+function nearestIdx() {
+  const panel  = document.getElementById('detail-day-panel');
+  if (!panel) return 0;
+  const panelH  = panel.offsetHeight;
+  const centerY = panelH / 2 - drumOffset;
+  let closest = 0, minDist = Infinity;
+  drumEvents.forEach((_, i) => {
+    const itemCenter = i * ITEM_H + ITEM_H / 2;
+    const dist = Math.abs(itemCenter - centerY);
+    if (dist < minDist) { minDist = dist; closest = i; }
+  });
+  return closest;
+}
+function initDrumScroll() {
+  const panel = document.getElementById('detail-day-panel');
+  panel.onmousedown = (e) => {
+    drumDragStart = { y: e.clientY, offset: drumOffset };
+    const drum = document.getElementById('day-drum');
+    if (drum) drum.classList.add('dragging');
+    e.preventDefault();
+  };
+  panel.onwheel = (e) => {
+    e.preventDefault();
+    drumOffset = drumClamp(drumOffset - e.deltaY * 0.6);
+    applyDrumOffset(false);
+    setDrumHighlight(nearestIdx());
+  };
+}
+document.addEventListener('mousemove', (e) => {
+  if (!drumDragStart) return;
+  const dy = e.clientY - drumDragStart.y;
+  drumOffset = drumClamp(drumDragStart.offset + dy);
+  applyDrumOffset(false);
+  setDrumHighlight(nearestIdx());
+});
+document.addEventListener('mouseup', (e) => {
+  if (!drumDragStart) return;
+  drumDragStart = null;
+  const drum = document.getElementById('day-drum');
+  if (drum) drum.classList.remove('dragging');
+  const idx = nearestIdx();
+  snapTo(idx, true);
+  if (drumEvents[idx]) selectDayGroup(drumEvents[idx]);
+});
+
+// === TWO-FINGER TRACKPAD SWIPE (wheel event) ===
+const WHEEL_THRESHOLD    = 80;   // accumulated delta to trigger month navigation
+const WHEEL_COOLDOWN     = 600;  // ms lockout after each navigation
+const BOUNDARY_THRESHOLD = 200;  // boundary delta needed to trigger date navigation
+let wheelAccX  = 0;
+let wheelLocked = false;
+let boundaryAccY = 0;
+
+document.getElementById('detail-hero').addEventListener('wheel', (e) => {
+  e.preventDefault();
+
+  const absX = Math.abs(e.deltaX), absY = Math.abs(e.deltaY);
+
+  if (absX > absY) {
+    // Horizontal: month navigation with threshold
+    if (wheelLocked) return;
+    wheelAccX += e.deltaX;
+    if (Math.abs(wheelAccX) >= WHEEL_THRESHOLD) {
+      wheelLocked = true;
+      if (wheelAccX > 0) navigateMonth(+1); else navigateMonth(-1);
+      wheelAccX = 0;
+      setTimeout(() => { wheelLocked = false; }, WHEEL_COOLDOWN);
+    }
+    return;
+  }
+
+  // Vertical: continuous text scroll
+  wheelAccX = 0;
+  const max = getTextScrollMax();
+  const navThreshold = max > 0 ? BOUNDARY_THRESHOLD : WHEEL_THRESHOLD;
+  const newOffset = textScrollOffset - e.deltaY;
+
+  if (newOffset >= 0 && newOffset <= max) {
+    // Within scroll range — follow finger directly, reset boundary acc
+    boundaryAccY = 0;
+    scrollText(newOffset, false);
+  } else {
+    // At boundary — clamp position and accumulate for navigation
+    scrollText(Math.max(0, Math.min(newOffset, max)), false);
+    if (!wheelLocked) {
+      boundaryAccY += e.deltaY;
+      if (newOffset < 0 && boundaryAccY >= navThreshold) {
+        // Scrolled above top → go to previous date
+        wheelLocked = true; boundaryAccY = 0;
+        navigateFlat(-1);
+        setTimeout(() => { wheelLocked = false; }, WHEEL_COOLDOWN);
+      } else if (newOffset > max && boundaryAccY <= -navThreshold) {
+        // Scrolled below bottom → go to next date
+        wheelLocked = true; boundaryAccY = 0;
+        navigateFlat(+1);
+        setTimeout(() => { wheelLocked = false; }, WHEEL_COOLDOWN);
+      }
+    }
+  }
+}, { passive: false });
+
+// === MONTH ===
+function selectMonth(month, jumpToDay) {
+  detailMonth = month;
+  document.querySelectorAll('.month-tab').forEach(tab =>
+    tab.classList.toggle('active', tab.dataset.month === month));
+
+  const rawEvents = (window.yearEvents || [])
+    .filter(e => e.month === month)
+    .sort((a, b) => Number(a.day) - Number(b.day));
+
+  const dayMap = new Map();
+  rawEvents.forEach(ev => {
+    if (!dayMap.has(ev.day)) dayMap.set(ev.day, { day: ev.day, month: ev.month, events: [] });
+    dayMap.get(ev.day).events.push(ev);
+  });
+  drumEvents = [...dayMap.values()];
+
+  const panel = document.getElementById('detail-day-panel');
+  panel.innerHTML = '';
+  if (!drumEvents.length) {
+    panel.classList.remove('open');
+    document.body.classList.remove('day-panel-open');
+    showNoData();
+    return;
+  }
+
+  const drum   = document.createElement('div');
+  drum.id      = 'day-drum';
+  const panelH = panel.offsetHeight || window.innerHeight - 76;
+  const pad    = Math.floor(panelH / 2 - ITEM_H / 2);
+  drum.style.paddingTop    = pad + 'px';
+  drum.style.paddingBottom = pad + 'px';
+
+  drumEvents.forEach((dayGroup, idx) => {
+    const item = document.createElement('div');
+    item.className = 'day-item';
+    item.innerHTML = `<div class="d-label">${dayGroup.day}日</div>`;
+    item.onclick = () => {
+      snapTo(idx, true);
+      selectDayGroup(dayGroup);
+    };
+    drum.appendChild(item);
+  });
+
+  panel.appendChild(drum);
+  initDrumScroll();
+
+  let startIdx = 0;
+  if (jumpToDay) {
+    const found = drumEvents.findIndex(g => g.day === jumpToDay);
+    if (found >= 0) startIdx = found;
+  }
+  activeIdx  = startIdx;
+  drumOffset = 0;
+  snapTo(startIdx, false);
+  panel.classList.add('open');
+  document.body.classList.add('day-panel-open');
+  selectDayGroup(drumEvents[startIdx]);
+}
+
+function selectDayGroup(dayGroup) {
+  // Reset text scroll on every date switch
+  resetTextScroll();
+
+  // Sync drum highlight
+  const drumIdx = drumEvents.findIndex(g => g.day === dayGroup.day && g.month === dayGroup.month);
+  if (drumIdx >= 0 && drumIdx !== activeIdx) {
+    snapTo(drumIdx, true);
+  }
+
+  // Sync flatIdx
+  const fi = flatDates.findIndex(g => g.month === dayGroup.month && g.day === dayGroup.day);
+  if (fi >= 0) flatIdx = fi;
+
+  // Sync month tab
+  document.querySelectorAll('.month-tab').forEach(tab =>
+    tab.classList.toggle('active', tab.dataset.month === dayGroup.month));
+
+  const card = document.getElementById('detail-content-card');
+  card.style.opacity    = '0';
+  card.style.transform  = 'translateY(14px)';
+  card.style.transition = 'opacity 0.3s ease,transform 0.3s ease';
+  setTimeout(() => {
+    document.getElementById('detail-event-date').textContent =
+      `${year} 年 ${dayGroup.month}月 ${dayGroup.day}日`;
+
+    const textEl = document.getElementById('detail-event-text');
+    const annoEl = document.getElementById('detail-event-annotation');
+    const srcEl  = document.getElementById('detail-event-source');
+    if (dayGroup.events.length === 1) {
+      textEl.textContent = '\u3000\u3000' + dayGroup.events[0].event;
+      annoEl.textContent = dayGroup.events[0].annotation || '';
+    } else {
+      textEl.innerHTML = dayGroup.events.map(ev =>
+        `<div class="event-block">\u3000\u3000${ev.event}</div>`
+      ).join('');
+      annoEl.innerHTML = dayGroup.events
+        .filter(ev => ev.annotation)
+        .map(ev => `<div>${ev.annotation}</div>`)
+        .join('');
+    }
+    const litTitle = dayGroup.events[0]?.literature_title;
+    srcEl.textContent = litTitle ? `——${litTitle}` : '';
+    card.style.opacity   = '1';
+    card.style.transform = 'translateY(0)';
+  }, 210);
+}
+
+function showNoData() {
+  document.getElementById('detail-event-date').textContent = '';
+  document.getElementById('detail-event-text').textContent = '暂无该年份记录';
+  document.getElementById('detail-event-annotation').textContent = '';
+  document.getElementById('detail-event-source').textContent = '';
+}
+
+// === KEYBOARD NAVIGATION ===
+document.addEventListener('keydown', (e) => {
+  const max = getTextScrollMax();
+  switch (e.key) {
+    case 'ArrowUp':
+      e.preventDefault();
+      if (textScrollOffset > 0) scrollText(Math.max(textScrollOffset - SCROLL_STEP, 0));
+      else navigateFlat(-1);
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      if (textScrollOffset < max) scrollText(Math.min(textScrollOffset + SCROLL_STEP, max));
+      else navigateFlat(+1);
+      break;
+    case 'ArrowRight': e.preventDefault(); navigateMonth(+1);   break;
+    case 'ArrowLeft':  e.preventDefault(); navigateMonth(-1);   break;
+  }
+});
+
+// === FETCH DATA ===
+async function loadPage() {
+  // 1. Load background
+  try {
+    const bgRes = await fetch(`${API_BASE}/backgrounds/detail/${year}`);
+    if (bgRes.ok) {
+      const bg  = await bgRes.json();
+      const img = document.getElementById('detail-bg-img');
+      if (bg.image_url)       img.src = bg.image_url;
+      else if (bg.image_data) img.src = `data:${bg.mime_type};base64,${bg.image_data}`;
+    }
+  } catch (e) { /* keep default */ }
+
+  // 2. Load events
+  try {
+    const evRes = await fetch(`${API_BASE}/events/${year}`);
+    if (!evRes.ok) { showNoData(); return; }
+    window.yearEvents = await evRes.json();
+  } catch (e) {
+    showNoData();
+    return;
+  }
+
+  buildFlatDates();
+
+  // Build month tabs
+  const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  const monthOrder  = [...new Set(window.yearEvents.map(e => e.month))];
+  const strip       = document.getElementById('detail-month-strip');
+  strip.innerHTML   = '';
+  monthOrder.forEach((m, i) => {
+    const tab = document.createElement('div');
+    tab.className    = 'month-tab has-data';
+    tab.dataset.month = m;
+    tab.innerHTML    = `<div class="m-num">${String(i + 1).padStart(2,'0')}</div><div class="m-zh">${MONTH_NAMES[i] || m}</div><div class="m-dot"></div>`;
+    tab.onclick      = () => selectMonth(m);
+    strip.appendChild(tab);
+  });
+
+  // Jump to URL-specified month/day or default to first
+  const urlMonth = params.get('month');
+  const urlDay   = params.get('day');
+  const gotoLast = params.get('gotoLast');
+  if (gotoLast === '1' && flatDates.length) {
+    // Landed from previous year's last-date navigation
+    const last = flatDates[flatDates.length - 1];
+    selectMonth(last.month, last.day);
+  } else if (urlMonth && monthOrder.includes(urlMonth)) {
+    selectMonth(urlMonth, urlDay);
+  } else if (monthOrder.length) {
+    selectMonth(monthOrder[0]);
+  } else {
+    showNoData();
+  }
+}
+
+// Hide loading overlay once background image loaded (or on error)
+const bgImg = document.getElementById('detail-bg-img');
+bgImg.onload = bgImg.onerror = () => {
+  document.getElementById('loading').style.display = 'none';
+};
+
+loadPage().then(() => {
+  if (!bgImg.src || bgImg.src === location.href) {
+    document.getElementById('loading').style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>

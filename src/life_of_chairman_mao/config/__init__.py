@@ -13,7 +13,8 @@ _base_dir = Path(__file__).parent.parent
 
 _settings_files = [
     # All config file will merge.
-    Path(__file__).parent / 'settings.yml',  # Load default config.
+    Path(__file__).parent / 'settings.yml',       # Load default config.
+    Path(__file__).parent / 'settings.local.yml', # Local overrides (DB credentials etc.)
 ]
 
 # User configuration. It will be created automatically by the pip installer .

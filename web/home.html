@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教员的一生 · 1893–1976</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Cinzel:wght@400;600&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:100vw;height:100vh;overflow:hidden;background:#000;font-family:'Noto Serif SC',serif;cursor:crosshair;}
+
+#bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;object-position:center bottom;z-index:0;}
+
+/* Nebula: normal blend, higher opacity, drawn on top of photo */
+#nebula{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:1;}
+
+#starCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:2;}
+
+/* ── Title ── */
+.title-block{position:fixed;top:28px;left:50%;transform:translateX(-50%);text-align:center;z-index:10;pointer-events:none;}
+.title-block h1{font-family:'Cinzel',serif;font-size:clamp(16px,2.8vw,34px);color:#e8d5a3;letter-spacing:.3em;text-shadow:0 0 30px rgba(255,200,80,.6);font-weight:400;}
+.title-block p{font-size:clamp(9px,1.1vw,13px);color:rgba(200,180,140,.65);letter-spacing:.25em;margin-top:5px;}
+
+/* ── Year search box ── */
+#search-box{
+  position:fixed;top:24px;right:56px;z-index:20;
+  display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+}
+#capsule{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(5,10,30,.72);
+  border:1px solid rgba(255,220,100,.35);
+  border-radius:999px;
+  padding:6px 20px 6px 20px;
+  backdrop-filter:blur(10px);
+  box-shadow:0 0 18px rgba(255,200,80,.1),0 2px 12px rgba(0,0,0,.5);
+  transition:border-color .2s,box-shadow .2s;
+}
+#capsule:focus-within{
+  border-color:rgba(255,220,100,.7);
+  box-shadow:0 0 20px rgba(255,200,80,.28),0 2px 12px rgba(0,0,0,.5);
+}
+#capsule label{
+  font-family:'Cinzel',serif;font-size:10px;
+  color:rgba(200,175,110,.65);letter-spacing:.18em;
+  white-space:nowrap;user-select:none;cursor:default;
+}
+#yearInput{
+  width:52px;
+  background:transparent;
+  border:none;
+  color:#ffd87a;
+  font-family:'Cinzel',serif;
+  font-size:15px;
+  text-align:center;
+  padding:0;
+  outline:none;
+  letter-spacing:.06em;
+  -moz-appearance:textfield;
+}
+#yearInput::-webkit-outer-spin-button,
+#yearInput::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+#yearInput::placeholder{color:rgba(255,210,100,.3);}
+#search-msg{
+  font-size:10px;color:rgba(255,120,100,.8);
+  letter-spacing:.1em;display:none;padding-right:4px;
+}
+
+/* ── Tooltip ── */
+#tooltip{position:fixed;z-index:20;pointer-events:none;opacity:0;transition:opacity .2s ease;transform:translate(-50%,-130%);}
+#tooltip.show{opacity:1;}
+.tt-inner{background:rgba(5,10,30,.88);border:1px solid rgba(255,220,100,.35);border-radius:6px;padding:10px 18px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 0 24px rgba(255,200,80,.15),0 4px 20px rgba(0,0,0,.6);white-space:nowrap;}
+.tt-year{font-family:'Cinzel',serif;font-size:22px;color:#ffd87a;letter-spacing:.15em;text-shadow:0 0 12px rgba(255,200,80,.7);}
+.tt-label{font-size:11px;color:rgba(180,160,120,.8);letter-spacing:.2em;margin-top:2px;}
+.tt-arrow-down{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:7px solid rgba(255,220,100,.35);margin:0 auto;}
+.tt-arrow-up{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid rgba(255,220,100,.35);margin:0 auto;}
+
+#hint{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;}
+#hint p{font-size:clamp(9px,1vw,12px);color:rgba(180,160,120,.45);letter-spacing:.2em;text-align:center;}
+
+.ripple{position:fixed;border-radius:50%;border:1.5px solid rgba(255,220,100,.7);pointer-events:none;z-index:50;animation:rippleOut .85s ease-out forwards;transform:translate(-50%,-50%);}
+
+#tunnel-overlay{display:none;position:fixed;inset:0;z-index:200;pointer-events:none;}
+#tunnel-canvas{position:absolute;inset:0;width:100%;height:100%;}
+@keyframes rippleOut{from{width:0;height:0;opacity:1;}to{width:80px;height:80px;opacity:0;}}
+
+</style>
+</head>
+<body>
+
+<img id="bg" src="images/星辰山峰.jpg" alt="">
+<canvas id="nebula"></canvas>
+<canvas id="starCanvas"></canvas>
+
+<div class="title-block">
+  <h1>Chairman Mao's life</h1>
+  <p>教员的一生 &nbsp;·&nbsp; 1893 — 1976</p>
+</div>
+
+<div id="search-box">
+  <div id="capsule">
+    <label for="yearInput">YEAR</label>
+    <input id="yearInput" type="number" min="1893" max="1976" placeholder="1949">
+  </div>
+  <div id="search-msg">超出范围 (1893–1976)</div>
+</div>
+
+<div id="tooltip">
+  <div class="tt-arrow-up" id="ttArrowUp" style="display:none"></div>
+  <div class="tt-inner">
+    <div class="tt-year" id="ttYear">1900</div>
+    <div class="tt-label" id="ttAge">1 岁</div>
+  </div>
+  <div class="tt-arrow-down" id="ttArrowDown"></div>
+</div>
+
+<div id="hint"><p>每一颗星，都是教员生命长河里的一年</p></div>
+
+<script>
+const stars = [
+  {year:1893,x:4.48,y:23.60,size:4.07,color:"#87ceeb",opacity:0.74},
+  {year:1894,x:5.34,y:46.35,size:6.18,color:"#b0e0e6",opacity:0.86},
+  {year:1895,x:7.11,y:36.04,size:5.53,color:"#ffb347",opacity:0.88},
+  {year:1896,x:8.11,y:48.90,size:7.93,color:"#90ee90",opacity:0.90},
+  {year:1897,x:8.72,y:43.40,size:8.10,color:"#98fb98",opacity:0.72},
+  {year:1898,x:10.26,y:44.13,size:3.53,color:"#98fb98",opacity:0.82},
+  {year:1899,x:11.03,y:15.33,size:4.22,color:"#ffeaa7",opacity:0.86},
+  {year:1900,x:12.28,y:53.71,size:6.63,color:"#ffffff",opacity:0.81},
+  {year:1901,x:13.20,y:54.59,size:3.96,color:"#ff9999",opacity:0.83},
+  {year:1902,x:14.86,y:22.64,size:6.02,color:"#ffd700",opacity:0.71},
+  {year:1903,x:15.27,y:35.37,size:7.92,color:"#ffe4b5",opacity:0.98},
+  {year:1904,x:16.85,y:21.15,size:6.70,color:"#dda0dd",opacity:0.80},
+  {year:1905,x:17.87,y:23.63,size:7.72,color:"#ffffff",opacity:0.89},
+  {year:1906,x:18.92,y:38.46,size:7.95,color:"#ffd700",opacity:0.81},
+  {year:1907,x:20.22,y:54.65,size:3.79,color:"#90ee90",opacity:0.92},
+  {year:1908,x:21.40,y:21.47,size:8.65,color:"#ffe4b5",opacity:0.73},
+  {year:1909,x:22.01,y:22.49,size:4.07,color:"#ffd700",opacity:0.98},
+  {year:1910,x:23.69,y:28.72,size:5.99,color:"#87ceeb",opacity:0.95},
+  {year:1911,x:24.21,y:50.36,size:4.12,color:"#ffe4b5",opacity:0.85},
+  {year:1912,x:25.24,y:50.80,size:5.02,color:"#dda0dd",opacity:0.82},
+  {year:1913,x:26.97,y:32.17,size:5.48,color:"#98fb98",opacity:0.86},
+  {year:1914,x:27.58,y:16.62,size:5.24,color:"#90ee90",opacity:0.82},
+  {year:1915,x:28.90,y:28.39,size:6.93,color:"#c8a2c8",opacity:0.92},
+  {year:1916,x:29.74,y:44.58,size:4.88,color:"#ff9999",opacity:0.94},
+  {year:1917,x:31.29,y:25.74,size:4.78,color:"#ff9999",opacity:0.99},
+  {year:1918,x:32.56,y:33.11,size:8.45,color:"#ffe4b5",opacity:0.85},
+  {year:1919,x:33.69,y:52.61,size:7.73,color:"#add8e6",opacity:0.74},
+  {year:1920,x:34.79,y:33.53,size:4.75,color:"#c8a2c8",opacity:0.95},
+  {year:1921,x:35.33,y:31.30,size:7.07,color:"#90ee90",opacity:1.00},
+  {year:1922,x:36.83,y:33.92,size:5.28,color:"#ffeaa7",opacity:0.76},
+  {year:1923,x:37.42,y:30.28,size:4.77,color:"#90ee90",opacity:0.76},
+  {year:1924,x:39.04,y:22.38,size:6.84,color:"#c8a2c8",opacity:0.83},
+  {year:1925,x:40.22,y:45.37,size:5.45,color:"#90ee90",opacity:0.80},
+  {year:1926,x:41.05,y:19.83,size:6.19,color:"#ffffff",opacity:0.86},
+  {year:1927,x:42.59,y:57.07,size:8.94,color:"#add8e6",opacity:0.94},
+  {year:1928,x:43.31,y:23.83,size:7.49,color:"#b0e0e6",opacity:0.83},
+  {year:1929,x:44.50,y:41.92,size:7.61,color:"#90ee90",opacity:0.93},
+  {year:1930,x:45.77,y:23.61,size:3.12,color:"#ffe4b5",opacity:0.94},
+  {year:1931,x:46.35,y:16.37,size:3.35,color:"#ff6b6b",opacity:0.81},
+  {year:1932,x:47.83,y:55.78,size:6.53,color:"#ff6b6b",opacity:0.76},
+  {year:1933,x:48.58,y:52.14,size:5.37,color:"#ff9999",opacity:0.75},
+  {year:1934,x:49.97,y:20.52,size:3.78,color:"#f0e68c",opacity:0.96},
+  {year:1935,x:51.26,y:31.73,size:6.37,color:"#b0e0e6",opacity:0.75},
+  {year:1936,x:52.02,y:26.76,size:6.44,color:"#ffeaa7",opacity:0.91},
+  {year:1937,x:53.08,y:54.25,size:8.99,color:"#ffb347",opacity:0.97},
+  {year:1938,x:54.74,y:35.48,size:4.02,color:"#ffe4b5",opacity:0.86},
+  {year:1939,x:55.93,y:37.50,size:3.69,color:"#ff9999",opacity:0.85},
+  {year:1940,x:56.52,y:46.55,size:6.42,color:"#add8e6",opacity:0.78},
+  {year:1941,x:57.38,y:28.72,size:4.57,color:"#ffd700",opacity:0.88},
+  {year:1942,x:58.52,y:16.55,size:5.05,color:"#87ceeb",opacity:0.87},
+  {year:1943,x:59.81,y:51.03,size:3.35,color:"#ff9999",opacity:0.83},
+  {year:1944,x:61.32,y:20.04,size:4.03,color:"#ff6b6b",opacity:0.90},
+  {year:1945,x:61.86,y:54.51,size:7.65,color:"#ffd700",opacity:0.91},
+  {year:1946,x:63.42,y:50.05,size:3.49,color:"#c8a2c8",opacity:0.73},
+  {year:1947,x:64.12,y:20.89,size:6.27,color:"#ffffff",opacity:0.93},
+  {year:1948,x:65.63,y:22.16,size:8.23,color:"#b0e0e6",opacity:0.77},
+  {year:1949,x:66.71,y:56.65,size:3.97,color:"#ff9999",opacity:0.72},
+  {year:1950,x:67.61,y:41.88,size:4.13,color:"#ffd700",opacity:0.92},
+  {year:1951,x:68.57,y:42.64,size:6.13,color:"#ffeaa7",opacity:0.70},
+  {year:1952,x:69.86,y:44.33,size:3.58,color:"#ff9999",opacity:1.00},
+  {year:1953,x:71.11,y:46.52,size:6.61,color:"#ffeaa7",opacity:0.72},
+  {year:1954,x:72.41,y:52.64,size:8.03,color:"#ff9999",opacity:0.83},
+  {year:1955,x:73.09,y:40.34,size:6.51,color:"#ffffff",opacity:0.79},
+  {year:1956,x:74.12,y:55.58,size:8.29,color:"#ff9999",opacity:0.87},
+  {year:1957,x:75.33,y:36.18,size:7.81,color:"#ffffff",opacity:0.81},
+  {year:1958,x:76.69,y:28.65,size:5.01,color:"#98fb98",opacity:0.94},
+  {year:1959,x:78.07,y:31.20,size:4.62,color:"#87ceeb",opacity:0.86},
+  {year:1960,x:78.97,y:15.80,size:8.18,color:"#ff6b6b",opacity:0.92},
+  {year:1961,x:79.86,y:45.77,size:7.65,color:"#ffd700",opacity:0.86},
+  {year:1962,x:81.42,y:24.12,size:6.89,color:"#ffd700",opacity:0.95},
+  {year:1963,x:81.83,y:15.19,size:8.66,color:"#90ee90",opacity:0.76},
+  {year:1964,x:83.56,y:22.73,size:4.80,color:"#ffeaa7",opacity:0.78},
+  {year:1965,x:84.42,y:33.52,size:3.02,color:"#c8a2c8",opacity:0.71},
+  {year:1966,x:85.39,y:57.64,size:5.68,color:"#ffd700",opacity:0.88},
+  {year:1967,x:86.46,y:20.68,size:8.50,color:"#ffe4b5",opacity:0.81},
+  {year:1968,x:87.42,y:46.55,size:5.91,color:"#b0e0e6",opacity:0.96},
+  {year:1969,x:88.75,y:23.67,size:7.80,color:"#ffd700",opacity:0.84},
+  {year:1970,x:90.21,y:22.41,size:7.12,color:"#ffd700",opacity:0.90},
+  {year:1971,x:91.15,y:36.69,size:8.22,color:"#add8e6",opacity:0.72},
+  {year:1972,x:91.92,y:24.75,size:7.23,color:"#dda0dd",opacity:0.86},
+  {year:1973,x:92.90,y:25.77,size:7.60,color:"#98fb98",opacity:0.85},
+  {year:1974,x:94.02,y:42.00,size:8.66,color:"#dda0dd",opacity:0.72},
+  {year:1975,x:95.20,y:17.15,size:4.76,color:"#ff6b6b",opacity:0.97},
+  {year:1976,x:96.41,y:38.52,size:6.30,color:"#ffd700",opacity:0.88}
+];
+
+// ── Nebula canvas (visible drifting clouds over photo) ──────────────
+const nebula = document.getElementById('nebula');
+const nCtx   = nebula.getContext('2d');
+
+const NCLOUDS = 22;
+const clouds  = [];
+
+// Init canvas size first so we have real px dimensions
+let NW = window.innerWidth;
+let NH = window.innerHeight;
+nebula.width  = NW;
+nebula.height = NH;
+
+for (let i = 0; i < NCLOUDS; i++) {
+  clouds.push({
+    cx:    Math.random() * NW,
+    cy:    Math.random() * NH * 0.55,
+    vx:    (Math.random() < 0.5 ? 1 : -1) * (8 + Math.random() * 14),
+    vy:    (Math.random() < 0.5 ? 1 : -1) * (3 + Math.random() * 6),
+    rf:    0.10 + Math.random() * 0.18,
+    hue:   Math.random() < 0.5 ? 205 + Math.random()*30 : 260 + Math.random()*50,
+    alpha: 0.18 + Math.random() * 0.18,
+    phase: Math.random() * Math.PI * 2,
+    spd:   0.10 + Math.random() * 0.22,
+  });
+}
+
+function resizeNebula() {
+  NW = nebula.width  = window.innerWidth;
+  NH = nebula.height = window.innerHeight;
+}
+resizeNebula();
+
+let lastT = 0;
+function drawNebula(t) {
+  const dt = lastT ? Math.min(t - lastT, 0.05) : 0.016;
+  lastT = t;
+
+  nCtx.clearRect(0, 0, NW, NH);
+
+  // Clip to sky region only (top 62% of screen = above the mountains)
+  const skyH = NH * 0.62;
+  nCtx.save();
+  nCtx.beginPath();
+  nCtx.rect(0, 0, NW, skyH);
+  nCtx.clip();
+
+  for (const c of clouds) {
+    // Move in pixel space with deltaTime
+    c.cx += c.vx * dt;
+    c.cy += c.vy * dt;
+
+    const cr = c.rf * Math.min(NW, NH) * (1 + 0.06 * Math.sin(t * c.spd + c.phase));
+    const margin = cr * 1.1;
+
+    // Wrap horizontally
+    if (c.cx < -margin)     c.cx = NW + margin;
+    if (c.cx > NW + margin) c.cx = -margin;
+    // Bounce vertically within sky — keep center + radius inside [0, skyH]
+    if (c.cy - margin < 0)       { c.cy = margin;        c.vy = Math.abs(c.vy); }
+    if (c.cy + margin > skyH)    { c.cy = skyH - margin; c.vy = -Math.abs(c.vy); }
+
+    const al = c.alpha * (0.82 + 0.18 * Math.sin(t * c.spd * 0.55 + c.phase));
+
+    const g = nCtx.createRadialGradient(c.cx, c.cy, 0, c.cx, c.cy, cr);
+    g.addColorStop(0,    `hsla(${c.hue},70%,80%,${al.toFixed(3)})`);
+    g.addColorStop(0.4,  `hsla(${c.hue},65%,60%,${(al*0.45).toFixed(3)})`);
+    g.addColorStop(0.75, `hsla(${c.hue},55%,45%,${(al*0.12).toFixed(3)})`);
+    g.addColorStop(1,    `hsla(${c.hue},50%,35%,0)`);
+
+    nCtx.beginPath();
+    nCtx.arc(c.cx, c.cy, cr, 0, Math.PI * 2);
+    nCtx.fillStyle = g;
+    nCtx.fill();
+  }
+
+  nCtx.restore();
+}
+
+// ── Star canvas ─────────────────────────────────────────────────────
+const sc  = document.getElementById('starCanvas');
+const ctx = sc.getContext('2d');
+let W = 0, H = 0;
+
+function resizeStar() {
+  W = sc.width  = window.innerWidth;
+  H = sc.height = window.innerHeight;
+}
+resizeStar();
+
+window.addEventListener('resize', () => { resizeNebula(); resizeStar(); });
+
+let hoveredIdx  = -1;
+let selectedIdx = -1;
+let pinnedIdx   = -1;
+
+function hexA(hex, a) {
+  let h = hex.replace('#','');
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${Math.min(1,Math.max(0,a)).toFixed(3)})`;
+}
+
+// Radial glow
+function drawGlow(x, y, r, color, alpha) {
+  const g = ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,    hexA(color, alpha));
+  g.addColorStop(0.35, hexA(color, alpha*0.4));
+  g.addColorStop(1,    hexA(color, 0));
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fillStyle = g; ctx.fill();
+}
+
+// Five-pointed star path centred at (x,y)
+function starPath(x, y, R) {
+  const r = R * 0.42;
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const angle = (k * Math.PI / 5) - Math.PI / 2;
+    const rad   = k % 2 === 0 ? R : r;
+    k === 0
+      ? ctx.moveTo(x + Math.cos(angle)*rad, y + Math.sin(angle)*rad)
+      : ctx.lineTo(x + Math.cos(angle)*rad, y + Math.sin(angle)*rad);
+  }
+  ctx.closePath();
+}
+
+// Idle flicker state per star
+const flickerActive = new Array(stars.length).fill(null);
+const flickerNext   = stars.map(() => Math.random() * 8);
+
+function drawOneStar(x, y, r, color, alpha, hov, sel, pin, t, flickerA) {
+  // Glow layers
+  if (pin) {
+    const pulse = 1 + 0.3 * Math.sin(t * 2.4);
+    drawGlow(x, y, r*8*pulse, color,   alpha*0.7*pulse);
+    drawGlow(x, y, r*4,       '#fff',  alpha*0.4);
+  } else if (sel) {
+    drawGlow(x, y, r*7, color,  alpha*0.85);
+    drawGlow(x, y, r*3, '#fff', alpha*0.5);
+  } else if (hov) {
+    drawGlow(x, y, r*6, color,  alpha*0.9);
+    drawGlow(x, y, r*2.5,'#fff',alpha*0.55);
+  } else if (flickerA > 0) {
+    drawGlow(x, y, r*4, color, flickerA*0.45);
+  }
+
+  // Five-pointed star body
+  ctx.save();
+  starPath(x, y, r);
+  if (hov || sel || pin) {
+    ctx.fillStyle = hexA('#ffffff', alpha);      ctx.fill();
+    ctx.fillStyle = hexA(color,     0.55);       ctx.fill();
+  } else {
+    const bodyA = flickerA > 0 ? alpha*(0.55+0.35*flickerA) : alpha*0.55;
+    ctx.fillStyle = hexA('#ffffff', bodyA);      ctx.fill();
+    ctx.fillStyle = hexA(color,     bodyA*0.6);  ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ── Tooltip ─────────────────────────────────────────────────────────
+const tooltip   = document.getElementById('tooltip');
+const ttYear    = document.getElementById('ttYear');
+const ttAge     = document.getElementById('ttAge');
+const ttArrUp   = document.getElementById('ttArrowUp');
+const ttArrDown = document.getElementById('ttArrowDown');
+
+function positionTooltip(px, py) {
+  tooltip.style.left = px + 'px';
+  if (py < 110) {
+    tooltip.style.top       = (py + 22) + 'px';
+    tooltip.style.transform = 'translate(-50%, 0)';
+    ttArrUp.style.display   = 'block';
+    ttArrDown.style.display = 'none';
+  } else {
+    tooltip.style.top       = py + 'px';
+    tooltip.style.transform = 'translate(-50%, -130%)';
+    ttArrUp.style.display   = 'none';
+    ttArrDown.style.display = 'block';
+  }
+}
+
+// ── Year search input ────────────────────────────────────────────────
+const yearInput = document.getElementById('yearInput');
+const searchMsg = document.getElementById('search-msg');
+
+yearInput.addEventListener('input', () => {
+  const val = parseInt(yearInput.value, 10);
+  if (!val) { pinnedIdx = -1; searchMsg.style.display='none'; return; }
+  if (val < 1893 || val > 1976) {
+    pinnedIdx = -1;
+    searchMsg.style.display = 'block';
+    return;
+  }
+  searchMsg.style.display = 'none';
+  const idx = stars.findIndex(s => s.year === val);
+  if (idx >= 0) {
+    pinnedIdx = idx;
+    // Scroll tooltip to pinned star momentarily
+    const s  = stars[idx];
+    const px = s.x/100*W, py = s.y/100*H;
+    ttYear.textContent      = s.year;
+    ttYear.style.color      = s.color;
+    ttYear.style.textShadow = `0 0 12px ${s.color}`;
+    ttAge.textContent       = (s.year - 1893) + ' 岁';
+    positionTooltip(px, py);
+    tooltip.classList.add('show');
+    setTimeout(() => { if (hoveredIdx < 0) tooltip.classList.remove('show'); }, 1800);
+  }
+});
+
+yearInput.addEventListener('keydown', e => e.stopPropagation());
+
+// ── Animation loop ───────────────────────────────────────────────────
+function animate() {
+  const t = performance.now() / 1000;
+  drawNebula(t);
+  ctx.clearRect(0, 0, W, H);
+
+  for (let i = 0; i < stars.length; i++) {
+    const s   = stars[i];
+    const px  = s.x / 100 * W;
+    const py  = s.y / 100 * H;
+    const hov = i === hoveredIdx;
+    const sel = i === selectedIdx;
+    const pin = i === pinnedIdx;
+
+    // Base size — no constant twinkle on size, keep stars crisp at rest
+    const r = s.size * (hov ? 1.7 : pin ? 1.9 : sel ? 1.5 : 1);
+
+    // Idle flicker: random stars briefly glow
+    let flickerA = 0;
+    if (!hov && !sel && !pin) {
+      if (flickerNext[i] <= t) {
+        // Start a new flicker event
+        flickerActive[i] = { start: t, dur: 0.6 + Math.random() * 1.0 };
+        flickerNext[i]   = t + 6 + Math.random() * 18; // next in 6–24s
+      }
+      if (flickerActive[i]) {
+        const elapsed = t - flickerActive[i].start;
+        const prog    = elapsed / flickerActive[i].dur;
+        if (prog >= 1) {
+          flickerActive[i] = null;
+        } else {
+          // Smooth bell curve: sin²(π·prog)
+          flickerA = Math.sin(Math.PI * prog) ** 2;
+        }
+      }
+    }
+
+    drawOneStar(px, py, r, s.color, s.opacity, hov, sel, pin, t, flickerA);
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+
+// ── Mouse ────────────────────────────────────────────────────────────
+sc.addEventListener('mousemove', (e) => {
+  const mx = e.clientX, my = e.clientY;
+  let best = -1, bestD = Infinity;
+  for (let i = 0; i < stars.length; i++) {
+    const s  = stars[i];
+    const px = s.x/100*W, py = s.y/100*H;
+    const d  = Math.hypot(mx-px, my-py);
+    if (d < s.size*2.5+14 && d < bestD) { bestD=d; best=i; }
+  }
+  if (best >= 0) {
+    hoveredIdx = best;
+    sc.style.cursor = 'pointer';
+    const s  = stars[best];
+    const px = s.x/100*W, py = s.y/100*H;
+    ttYear.textContent      = s.year;
+    ttYear.style.color      = s.color;
+    ttYear.style.textShadow = `0 0 12px ${s.color}`;
+    ttAge.textContent       = (s.year - 1893) + ' 岁';
+    positionTooltip(px, py);
+    tooltip.classList.add('show');
+  } else {
+    hoveredIdx = -1;
+    sc.style.cursor = 'crosshair';
+    tooltip.classList.remove('show');
+  }
+});
+
+sc.addEventListener('click', () => {
+  if (hoveredIdx >= 0) {
+    // 再次点击已选中的星星 → 取消选中，不跳转
+    if (selectedIdx === hoveredIdx) {
+      selectedIdx = -1;
+      return;
+    }
+    const s  = stars[hoveredIdx];
+    const px = s.x/100*W, py = s.y/100*H;
+    const rpl = document.createElement('div');
+    rpl.className = 'ripple';
+    rpl.style.cssText = `left:${px}px;top:${py}px;border-color:${s.color};`;
+    document.body.appendChild(rpl);
+    setTimeout(() => rpl.remove(), 900);
+    selectedIdx = hoveredIdx;
+    setTimeout(() => { runTunnel(() => { window.location.href = `detail.html?year=${s.year}`; }); }, 1000);
+  }
+});
+
+sc.addEventListener('mouseleave', () => {
+  hoveredIdx = -1;
+  tooltip.classList.remove('show');
+});
+
+
+
+const API_BASE = 'http://127.0.0.1:8000/api';
+
+// === TUNNEL ===
+function runTunnel(onDone) {
+  const overlay = document.getElementById('tunnel-overlay');
+  const tc = document.getElementById('tunnel-canvas');
+  const tctx = tc.getContext('2d');
+  overlay.style.display = 'block';
+  tc.width = window.innerWidth; tc.height = window.innerHeight;
+  const CX = tc.width/2, CY = tc.height/2;
+  const DURATION = 1100;
+  const start = performance.now();
+  const rings = Array.from({length:28}, (_,i) => ({
+    baseR: 16+i*20, angle: Math.random()*Math.PI*2,
+    spd: 0.035+i*0.003, hue: 190+i*7
+  }));
+  function frame(now) {
+    const p = Math.min((now-start)/DURATION, 1);
+    tctx.clearRect(0,0,tc.width,tc.height);
+    const vr = (1-p)*Math.max(tc.width,tc.height)*0.8+1;
+    const vig = tctx.createRadialGradient(CX,CY,0,CX,CY,vr);
+    vig.addColorStop(0,`rgba(0,0,0,0)`);
+    vig.addColorStop(0.5,`rgba(0,0,0,${(p*0.35).toFixed(3)})`);
+    vig.addColorStop(1,`rgba(0,0,0,${(0.45+p*0.55).toFixed(3)})`);
+    tctx.fillStyle=vig; tctx.fillRect(0,0,tc.width,tc.height);
+    for(const ring of rings) {
+      ring.angle += ring.spd*0.35;
+      const zoom = 1+p*9;
+      const r = ring.baseR*zoom;
+      const al = Math.max(0, 0.75-p*0.5)*(1-r/(tc.width*0.95));
+      if(al<=0||r>tc.width) continue;
+      tctx.save();
+      tctx.strokeStyle=`hsla(${ring.hue},80%,72%,${al.toFixed(3)})`;
+      tctx.lineWidth=1.3;
+      tctx.shadowColor=`hsla(${ring.hue},80%,70%,0.4)`;
+      tctx.shadowBlur=10;
+      tctx.beginPath();
+      tctx.ellipse(CX,CY,r,r*0.52,ring.angle,0,Math.PI*2);
+      tctx.stroke(); tctx.restore();
+    }
+    if(p>0.68){
+      const fa=(p-0.68)/0.32;
+      const fl=tctx.createRadialGradient(CX,CY,0,CX,CY,180+fa*500);
+      fl.addColorStop(0,`rgba(255,240,190,${(fa*0.95).toFixed(3)})`);
+      fl.addColorStop(0.35,`rgba(220,185,80,${(fa*0.5).toFixed(3)})`);
+      fl.addColorStop(1,`rgba(0,0,0,0)`);
+      tctx.fillStyle=fl; tctx.fillRect(0,0,tc.width,tc.height);
+    }
+    if(p<1) { requestAnimationFrame(frame); }
+    else { setTimeout(()=>{ overlay.style.display='none'; tctx.clearRect(0,0,tc.width,tc.height); if(onDone) onDone(); },80); }
+  }
+  requestAnimationFrame(frame);
+}
+</script>
+
+<div id="tunnel-overlay"><canvas id="tunnel-canvas"></canvas></div>
+
+</body>
+</html>
