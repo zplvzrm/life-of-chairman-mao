@@ -290,7 +290,7 @@ def parse_md(md_path: Path, year: int) -> list:
     for e in entries:
         body = renumber_body(e.body.strip())
         if e.footnotes:
-            ann = " ".join(f"[{i+1}] {fn}" for i, fn in enumerate(e.footnotes))
+            ann = "\n".join(f"[{i+1}] {fn}" for i, fn in enumerate(e.footnotes))
         else:
             ann = ""
         result.append({

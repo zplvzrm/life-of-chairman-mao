@@ -72,7 +72,8 @@ life_of_chairman_mao/
 │   │       ├── parse_nianpu.py                    # 年谱 Markdown/JSON 解析
 │   │       ├── parse_wenji_md.py                  # 文集 MD → JSON
 │   │       ├── parse_xuanji.py                    # 选集 txt → JSON
-│   │       └── parse_jianguo_wengao_md.py         # 建国以来毛泽东文稿 MD → JSON
+│   │       ├── parse_jianguo_wengao_md.py         # 建国以来毛泽东文稿 MD → JSON
+│   │       └── parse_zaoqi_wengao_md.py           # 毛泽东早期文稿 MD → JSON
 │   ├── data_etl/
 │   │   ├── __init__.py
 │   │   └── init_sql.sql             # 建库建表 SQL
@@ -254,6 +255,7 @@ MySQL · chronology 表
 | `pytest` | 运行测试 |
 | `python -m src.life_of_chairman_mao.data_process.parse.parse_nianpu` | 解析年谱 |
 | `PYTHONPATH=src python -m life_of_chairman_mao.data_process.parse.parse_jianguo_wengao_md [--force] <册目录或根目录>` | 解析建国以来毛泽东文稿各册 MD → JSON（literature_id 25–44） |
+| `PYTHONPATH=src python -m life_of_chairman_mao.data_process.parse.parse_zaoqi_wengao_md [--force] [md目录] [json目录]` | 解析《毛泽东早期文稿》MD → JSON（literature_id 45，正编 131 篇） |
 | `PYTHONPATH=src python -m life_of_chairman_mao.data_etl.import_manuscript [--create-table]` | 建表并导入文稿 JSON → `manuscript` 表 |
 
 ---
@@ -290,4 +292,4 @@ MySQL · chronology 表
 
 ---
 
-**最后更新**：2026-05-27
+**最后更新**：2026-06-08
