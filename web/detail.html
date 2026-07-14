@@ -50,8 +50,12 @@ body.day-panel-open #detail-content-card{padding-left:100px;}
 #detail-event-text{font-size:clamp(15px,2vw,21px);color:#f0e8d0;line-height:2.1;letter-spacing:.14em;text-shadow:0 1px 10px rgba(0,0,0,0.9);}
 #detail-event-annotation{margin-top:10px;font-size:12px;color:rgba(200,180,130,0.5);letter-spacing:.15em;font-style:italic;white-space:pre-line;}
 #detail-event-source{margin-top:8px;font-size:12px;color:rgba(200,180,130,0.45);letter-spacing:.12em;font-style:italic;text-align:right;}
-.event-block{margin-bottom:18px;}
+.event-block{margin-bottom:18px;white-space:pre-line;}
 .event-block:last-child{margin-bottom:0;}
+.lit-block{margin-bottom:0;}
+.lit-annotation{margin-top:10px;font-size:12px;color:rgba(200,180,130,0.5);letter-spacing:.15em;font-style:italic;white-space:pre-line;}
+.lit-source{margin-top:8px;font-size:12px;color:rgba(200,180,130,0.45);letter-spacing:.12em;font-style:italic;text-align:right;}
+.lit-divider{border:none;border-top:1px dashed rgba(255,220,100,0.28);margin:22px 0;}
 
 /* ── Month strip ── */
 #detail-month-strip-wrap{background:rgba(0,0,0,0.9);border-top:1px solid rgba(255,220,100,0.1);flex-shrink:0;}
@@ -163,6 +167,65 @@ body.day-panel-open #detail-content-card{padding-left:100px;}
 <script>
 const API_BASE = 'http://127.0.0.1:8000/api';
 
+const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+
+function parseMonthNum(m) {
+  const n = parseInt(m, 10);
+  if (!isNaN(n)) return n;
+  const cn = { '正月': 1, '一月': 1, '二月': 2, '三月': 3, '四月': 4, '五月': 5, '六月': 6,
+               '七月': 7, '八月': 8, '九月': 9, '十月': 10, '十一月': 11, '十二月': 12 };
+  return cn[m] || 0;
+}
+function formatMonthNum(m) {
+  const n = parseMonthNum(m);
+  return n ? String(n).padStart(2, '0') : m;
+}
+function formatMonthZh(m) {
+  const n = parseMonthNum(m);
+  return (n >= 1 && n <= 12) ? MONTH_NAMES[n - 1] : m;
+}
+function sortedMonths(events) {
+  return [...new Set((events || []).map(e => e.month))]
+    .sort((a, b) => parseMonthNum(a) - parseMonthNum(b));
+}
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function renderLiteratureBlock(events) {
+  const textHtml = events.length === 1
+    ? `<div class="event-block">\u3000\u3000${escapeHtml(events[0].event)}</div>`
+    : events.map(ev => `<div class="event-block">\u3000\u3000${escapeHtml(ev.event)}</div>`).join('');
+  const annoHtml = events
+    .filter(ev => ev.annotation)
+    .map(ev => `<div class="lit-annotation">${escapeHtml(ev.annotation)}</div>`)
+    .join('');
+  const title = events[0]?.literature_title;
+  const srcHtml = title ? `<div class="lit-source">——${escapeHtml(title)}</div>` : '';
+  return `<div class="lit-block">${textHtml}${annoHtml}${srcHtml}</div>`;
+}
+function groupEventsByLiterature(events) {
+  const sorted = [...events].sort((a, b) => {
+    const ao = a.literature_order ?? a.literature_id ?? 0;
+    const bo = b.literature_order ?? b.literature_id ?? 0;
+    return ao - bo || (a.id - b.id);
+  });
+  const groups = [];
+  const order = [];
+  sorted.forEach(ev => {
+    const key = ev.literature_order ?? ev.literature_id ?? 0;
+    if (!groups[key]) {
+      groups[key] = [];
+      order.push(key);
+    }
+    groups[key].push(ev);
+  });
+  return order.map(key => groups[key]);
+}
+
 // === INIT ===
 const params = new URLSearchParams(location.search);
 const year   = params.get('year') || String(new Date().getFullYear());
@@ -220,8 +283,7 @@ let flatIdx   = 0;   // current position in flatDates
 
 function buildFlatDates() {
   flatDates = [];
-  const monthOrder = [...new Set((window.yearEvents || []).map(e => e.month))];
-  monthOrder.forEach(m => {
+  sortedMonths(window.yearEvents).forEach(m => {
     const rawEvents = (window.yearEvents || [])
       .filter(e => e.month === m)
       .sort((a, b) => Number(a.day) - Number(b.day));
@@ -263,7 +325,7 @@ function navigateFlat(delta) {
 
 // Navigate to next/previous month's first date with data
 function navigateMonth(delta) {
-  const monthOrder = [...new Set((window.yearEvents || []).map(e => e.month))];
+  const monthOrder = sortedMonths(window.yearEvents);
   const curMonthIdx = monthOrder.indexOf(detailMonth);
   if (curMonthIdx < 0) return;
   const newMonthIdx = curMonthIdx + delta;
@@ -493,25 +555,17 @@ function selectDayGroup(dayGroup) {
   card.style.transition = 'opacity 0.3s ease,transform 0.3s ease';
   setTimeout(() => {
     document.getElementById('detail-event-date').textContent =
-      `${year} 年 ${dayGroup.month}月 ${dayGroup.day}日`;
+      `${year} 年 ${parseMonthNum(dayGroup.month)} 月 ${Number(dayGroup.day)}日`;
 
     const textEl = document.getElementById('detail-event-text');
     const annoEl = document.getElementById('detail-event-annotation');
     const srcEl  = document.getElementById('detail-event-source');
-    if (dayGroup.events.length === 1) {
-      textEl.textContent = '\u3000\u3000' + dayGroup.events[0].event;
-      annoEl.textContent = dayGroup.events[0].annotation || '';
-    } else {
-      textEl.innerHTML = dayGroup.events.map(ev =>
-        `<div class="event-block">\u3000\u3000${ev.event}</div>`
-      ).join('');
-      annoEl.innerHTML = dayGroup.events
-        .filter(ev => ev.annotation)
-        .map(ev => `<div>${ev.annotation}</div>`)
-        .join('');
-    }
-    const litTitle = dayGroup.events[0]?.literature_title;
-    srcEl.textContent = litTitle ? `——${litTitle}` : '';
+    const litGroups = groupEventsByLiterature(dayGroup.events);
+    textEl.innerHTML = litGroups
+      .map(renderLiteratureBlock)
+      .join('<hr class="lit-divider">');
+    annoEl.textContent = '';
+    srcEl.textContent  = '';
     card.style.opacity   = '1';
     card.style.transform = 'translateY(0)';
   }, 210);
@@ -569,15 +623,14 @@ async function loadPage() {
   buildFlatDates();
 
   // Build month tabs
-  const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
-  const monthOrder  = [...new Set(window.yearEvents.map(e => e.month))];
+  const monthOrder  = sortedMonths(window.yearEvents);
   const strip       = document.getElementById('detail-month-strip');
   strip.innerHTML   = '';
-  monthOrder.forEach((m, i) => {
+  monthOrder.forEach(m => {
     const tab = document.createElement('div');
     tab.className    = 'month-tab has-data';
     tab.dataset.month = m;
-    tab.innerHTML    = `<div class="m-num">${String(i + 1).padStart(2,'0')}</div><div class="m-zh">${MONTH_NAMES[i] || m}</div><div class="m-dot"></div>`;
+    tab.innerHTML    = `<div class="m-num">${formatMonthNum(m)}</div><div class="m-zh">${formatMonthZh(m)}</div><div class="m-dot"></div>`;
     tab.onclick      = () => selectMonth(m);
     strip.appendChild(tab);
   });

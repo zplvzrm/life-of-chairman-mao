@@ -12,7 +12,9 @@ class Event(BaseModel):
     day: str
     event: str
     annotation: Optional[str] = None
+    literature_id: Optional[int] = None
     literature_title: Optional[str] = None
+    literature_order: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

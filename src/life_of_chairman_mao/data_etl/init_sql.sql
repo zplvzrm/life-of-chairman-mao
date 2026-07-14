@@ -112,6 +112,33 @@ CREATE TABLE IF NOT EXISTS manuscript (
 
 
 -- ------------------------------------------------------------
+-- 毛泽东早期文稿表
+-- 对应 JSON 字段: age / year / month / day / title / content / annotation / literature_id
+-- literature_id 45 对应《毛泽东早期文稿 1912·06-1920·11》
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS early_manuscript (
+    id            BIGINT        NOT NULL AUTO_INCREMENT        COMMENT '主键',
+    age           INT           NOT NULL                       COMMENT '年龄',
+    year          CHAR(4)       NOT NULL                       COMMENT '公历年份，如 1949',
+    month         VARCHAR(10)   NOT NULL DEFAULT ''            COMMENT '月份（中文），如 正月',
+    day           VARCHAR(10)   NOT NULL DEFAULT ''            COMMENT '日（中文），如 初一',
+    title         TEXT          NOT NULL                       COMMENT '文章标题',
+    content       MEDIUMTEXT    NOT NULL                       COMMENT '文章正文',
+    annotation    MEDIUMTEXT                                   COMMENT '注释 / 出处，可为空',
+    literature_id BIGINT        NULL                           COMMENT '文献 ID，关联 literature 表',
+
+    PRIMARY KEY (id),
+    INDEX idx_year          (year),
+    INDEX idx_year_month    (year, month),
+    INDEX idx_literature_id (literature_id),
+    FULLTEXT INDEX ft_event (content)
+)   ENGINE  = InnoDB
+    DEFAULT CHARSET  = utf8mb4
+    COLLATE = utf8mb4_unicode_ci
+    COMMENT = '毛泽东早期文稿 1912·06-1920·11';
+
+
+-- ------------------------------------------------------------
 -- 用户浏览历史表
 -- 每位匿名用户（UUID）只保留最后一次浏览记录
 -- 通过 UNIQUE KEY(user_id) + ON DUPLICATE KEY UPDATE 实现 upsert
@@ -141,6 +168,7 @@ CREATE TABLE IF NOT EXISTS user_visits (
 CREATE TABLE IF NOT EXISTS literature (
     id           BIGINT        NOT NULL AUTO_INCREMENT          COMMENT '主键',
     title        VARCHAR(512)  NOT NULL                         COMMENT '文献名称',
+    table_name   VARCHAR(64)   NULL                             COMMENT '文献数据保存的表名',
     author       VARCHAR(255)  NULL                             COMMENT '作者',
     publisher    VARCHAR(255)  NULL                             COMMENT '出版社',
     publish_year CHAR(4)       NULL                             COMMENT '出版年份',
@@ -179,6 +207,32 @@ END$$
 DELIMITER ;
 CALL _add_literature_id();
 DROP PROCEDURE IF EXISTS _add_literature_id;
+
+
+-- 为 literature 表增加 table_name 列并填充（幂等：列不存在才执行）
+DROP PROCEDURE IF EXISTS _add_literature_table_name;
+DELIMITER $$
+CREATE PROCEDURE _add_literature_table_name()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME   = 'literature'
+          AND COLUMN_NAME  = 'table_name'
+    ) THEN
+        ALTER TABLE literature
+            ADD COLUMN table_name VARCHAR(64) NULL COMMENT '文献数据保存的表名' AFTER title;
+    END IF;
+
+    UPDATE literature SET table_name = 'chronology'      WHERE id BETWEEN  1 AND  9;
+    UPDATE literature SET table_name = 'selected_works'  WHERE id BETWEEN 10 AND 16;
+    UPDATE literature SET table_name = 'collected_works' WHERE id BETWEEN 17 AND 24;
+    UPDATE literature SET table_name = 'manuscript'      WHERE id BETWEEN 25 AND 44;
+    UPDATE literature SET table_name = 'early_manuscript' WHERE id = 45;
+END$$
+DELIMITER ;
+CALL _add_literature_table_name();
+DROP PROCEDURE IF EXISTS _add_literature_table_name;
 
 
 -- ------------------------------------------------------------

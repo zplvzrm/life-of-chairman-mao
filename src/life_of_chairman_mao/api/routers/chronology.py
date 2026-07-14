@@ -14,26 +14,86 @@ from ..schemas import Event
 
 router = APIRouter(tags=["年谱"])
 
+# literature.table_name 允许关联的数据表（白名单，防 SQL 注入）
+_CONTENT_TABLES = {
+    "chronology": "t.event",
+    "selected_works": (
+        "CONCAT("
+        "COALESCE(t.title, ''), "
+        "IF(t.title <> '' AND t.content IS NOT NULL AND t.content <> '', CHAR(10), ''), "
+        "COALESCE(t.content, '')"
+        ")"
+    ),
+    "collected_works": (
+        "CONCAT("
+        "COALESCE(t.title, ''), "
+        "IF(t.title <> '' AND t.content IS NOT NULL AND t.content <> '', CHAR(10), ''), "
+        "COALESCE(t.content, '')"
+        ")"
+    ),
+    "manuscript": (
+        "CONCAT("
+        "COALESCE(t.title, ''), "
+        "IF(t.title <> '' AND t.content IS NOT NULL AND t.content <> '', CHAR(10), ''), "
+        "COALESCE(t.content, '')"
+        ")"
+    ),
+    "early_manuscript": (
+        "CONCAT("
+        "COALESCE(t.title, ''), "
+        "IF(t.title <> '' AND t.content IS NOT NULL AND t.content <> '', CHAR(10), ''), "
+        "COALESCE(t.content, '')"
+        ")"
+    ),
+}
+
+_YEAR_UNION_SQL = " UNION ".join(
+    f"SELECT DISTINCT year FROM {table}" for table in _CONTENT_TABLES
+)
+
+_EVENTS_BY_YEAR_SQL = " UNION ALL ".join(
+    f"""
+    SELECT
+        t.id,
+        t.age,
+        t.year,
+        t.month,
+        t.day,
+        {_CONTENT_TABLES[table]} AS event,
+        t.annotation,
+        t.literature_id,
+        l.title AS literature_title,
+        l.id AS literature_order
+    FROM {table} t
+    INNER JOIN literature l ON t.literature_id = l.id AND l.table_name = %s
+    WHERE t.year = %s
+    """.strip()
+    for table in _CONTENT_TABLES
+) + """
+ORDER BY literature_order, CAST(month AS UNSIGNED), CAST(day AS UNSIGNED), id
+"""
+
 
 @router.get("/years", summary="获取所有有记录的年份")
 async def list_years(cur=Depends(get_cursor)) -> list[str]:
-    await cur.execute("SELECT DISTINCT year FROM chronology ORDER BY year")
+    await cur.execute(
+        f"""
+        SELECT year FROM (
+            {_YEAR_UNION_SQL}
+        ) AS all_years
+        ORDER BY year
+        """
+    )
     rows = await cur.fetchall()
     return [row["year"] for row in rows]
 
 
 @router.get("/events/{year}", summary="获取某年所有事件", response_model=list[Event])
 async def get_events_by_year(year: str, cur=Depends(get_cursor)):
-    await cur.execute(
-        """
-        SELECT c.*, l.title AS literature_title
-        FROM chronology c
-        LEFT JOIN literature l ON c.literature_id = l.id
-        WHERE c.year = %s
-        ORDER BY c.month, c.day
-        """,
-        (year,),
-    )
+    params = []
+    for table in _CONTENT_TABLES:
+        params.extend([table, year])
+    await cur.execute(_EVENTS_BY_YEAR_SQL, params)
     return await cur.fetchall()
 
 
